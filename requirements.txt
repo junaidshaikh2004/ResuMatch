@@ -1,3 +1,5 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 Django>=5.0,<5.3
 gunicorn>=22.0
 whitenoise>=6.6

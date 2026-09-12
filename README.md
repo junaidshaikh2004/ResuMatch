@@ -5,8 +5,8 @@ https://resumatch-6qc6.onrender.com/
 ResuMatch checks how well a resume fits a job description. Upload a resume once
 (it's parsed and stored server-side, tied to your browser session — no login
 needed), paste a job description, and get a fit score backed by a real NLP +
-machine learning pipeline: TF-IDF, sentence embeddings, skill/experience
-extraction, and two models — a Logistic Regression baseline and a hand-built
+machine learning pipeline: TF-IDF similarity plus engineered skill/experience
+features, fed into two models — a Logistic Regression baseline and a hand-built
 PyTorch neural network — trained from scratch and compared side by side on a
 dashboard.
 
@@ -19,9 +19,9 @@ dashboard.
    stored resume or upload a different one just for that one check (which is
    never saved).
 3. **Feature engineering** (`matcher/ml/features.py`) turns a resume/JD pair
-   into 7 numbers: TF-IDF cosine similarity, sentence-embedding cosine
-   similarity, skill overlap ratio, missing-skill count, resume years of
-   experience, JD years required, and the experience gap.
+   into 6 numbers: TF-IDF cosine similarity, skill overlap ratio,
+   missing-skill count, resume years of experience, JD years required, and
+   the experience gap.
 4. **Two models**, both trained on those same features
    (`matcher/management/commands/train_models.py`):
    - Logistic Regression (`class_weight="balanced"`) as an interpretable baseline.
@@ -46,6 +46,27 @@ is therefore an **AI-generated synthetic dataset**, built by
 and a curated skill bank across 12 job roles, with labels assigned by a
 skill-overlap + experience rule plus a small amount of injected noise. It is
 not real user data — this is disclosed here and at the top of that file.
+
+## About the ML stack (why there's no sentence-transformers)
+
+An earlier version of this project also computed a semantic-similarity
+feature using `sentence-transformers` (`all-MiniLM-L6-v2` embeddings)
+alongside TF-IDF. It was removed after the first production deploy: Render's
+free tier caps a web service at **512MB RAM**, and `sentence-transformers`
+pulls in `torch`, `transformers`, `tokenizers`, `huggingface-hub`, and
+`safetensors` — together too heavy for that limit. It crashed the whole app
+with an out-of-memory error both when loaded lazily on the first job-fit
+check and when loaded eagerly at process startup, confirming it was a
+memory-budget problem, not a timing one.
+
+The fix was to cut it, not work around it: `matcher/ml/features.py` now
+computes similarity from TF-IDF alone, combined with the engineered
+skill-overlap and years-of-experience features. `torch` is still a real
+dependency — `FitNet`, the hand-built neural network, still needs it — but
+without `sentence-transformers`'s dependency tree, the app fits comfortably
+in 512MB. This is a deliberate free-tier trade-off, not an oversight: a
+sentence-embedding feature would likely add real signal on top of TF-IDF,
+but wasn't worth it for a portfolio deploy on a memory-capped host.
 
 ## Project layout
 
@@ -96,30 +117,22 @@ tool. Steps, for when you're ready:
    `CSRF_TRUSTED_ORIGINS=https://<your-app>.onrender.com`.
 7. Deploy.
 
-**Known constraint**: Render's free tier gives 512MB RAM. `torch` and
-`sentence-transformers` are heavier dependencies than a typical Django app —
-this project mitigates that by using a small embedding model
-(`all-MiniLM-L6-v2`, ~80MB), loading it once per process as a singleton
-(`matcher/ml/predict.py`) instead of per-request, running a single gunicorn
-worker, and committing the already-trained model files so the deployed app
-never trains on boot.
+**Known constraint**: Render's free tier gives 512MB RAM. This project
+originally also used `sentence-transformers` for a semantic-similarity
+feature; it was removed after crashing the app with an out-of-memory error
+(see "About the ML stack" above) — the dependency tree was simply too heavy
+for 512MB, regardless of when it loaded. What's left (`torch` for the
+hand-built `FitNet`, plus scikit-learn/pandas/TF-IDF) fits comfortably.
 
-That singleton is loaded **eagerly at process startup** (`matcher/apps.py`,
-`MatcherConfig.ready()`) rather than lazily on the first job-fit check. This
-was a deliberate fix after the first live deploy: loading torch +
-sentence-transformers for the first time inside a live request competed with
-request handling for memory and crashed the whole worker (not just that
-request — every page 502'd until Render auto-restarted it). Loading it once
-at boot, before any traffic is accepted, means that cost is paid at a quiet
-moment instead. The trade-off is a slower cold start/boot (and a slower
-wake-up after Render's free tier spins the service down from inactivity,
-since the model has to reload then too) — if a deploy's health check ever
-times out because of this, increase Render's health check grace period
-rather than reverting to lazy loading.
-
-If you still see out-of-memory errors after this, the single-worker setting
-above is the next thing to check (don't scale up gunicorn workers
-without also scaling up the plan's RAM).
+The trained model artifacts (`matcher/ml/predict.py`) are still loaded once
+per process as a singleton, and eagerly at process startup rather than
+lazily on the first job-fit check (`matcher/apps.py`, `MatcherConfig.ready()`)
+— cheap now, but kept so the first real request never pays even that small
+cost. Combined with running a single gunicorn worker and committing the
+already-trained model files (so the deployed app never trains on boot),
+this should stay well within the free tier. If you ever see out-of-memory
+errors again, the single-worker setting above is the first thing to check
+(don't scale up gunicorn workers without also scaling up the plan's RAM).
 
 ## Tests
 

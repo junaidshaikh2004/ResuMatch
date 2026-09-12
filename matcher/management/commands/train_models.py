@@ -3,7 +3,7 @@ Trains and evaluates both models on the synthetic dataset:
   - a Logistic Regression baseline (scikit-learn)
   - FitNet, a small hand-built PyTorch feedforward network
 
-Both are trained on the exact same 7-number feature vector (see
+Both are trained on the exact same 6-number feature vector (see
 matcher/ml/features.py), computed with the exact same code path used at
 inference time in predict.py, so there's no train/inference skew.
 
@@ -25,7 +25,6 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from sentence_transformers import SentenceTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
@@ -49,11 +48,11 @@ PRECISION_FLOOR = 0.55  # don't accept a threshold whose precision drops below t
 THRESHOLD_GRID = np.arange(0.05, 0.96, 0.05)
 
 
-def build_features(df, vectorizer, embedder):
+def build_features(df, vectorizer):
     """Runs build_feature_dict on every row of the dataframe, returns (X, y)."""
     rows = []
     for _, row in df.iterrows():
-        features = build_feature_dict(row["resume_text"], row["jd_text"], vectorizer, embedder)
+        features = build_feature_dict(row["resume_text"], row["jd_text"], vectorizer)
         rows.append(feature_dict_to_vector(features))
     X = np.vstack(rows)
     y = df["label"].to_numpy()
@@ -168,13 +167,10 @@ class Command(BaseCommand):
         vectorizer = TfidfVectorizer(max_features=2000, stop_words="english")
         vectorizer.fit(train_corpus)
 
-        self.stdout.write("Loading sentence-transformer model (all-MiniLM-L6-v2)...")
-        embedder = SentenceTransformer("all-MiniLM-L6-v2")
-
         self.stdout.write("Building feature vectors for train/val/test...")
-        X_train, y_train = build_features(train_df, vectorizer, embedder)
-        X_val, y_val = build_features(val_df, vectorizer, embedder)
-        X_test, y_test = build_features(test_df, vectorizer, embedder)
+        X_train, y_train = build_features(train_df, vectorizer)
+        X_val, y_val = build_features(val_df, vectorizer)
+        X_test, y_test = build_features(test_df, vectorizer)
 
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)

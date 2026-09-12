@@ -1,18 +1,22 @@
 """
-Loads the trained artifacts (TF-IDF vectorizer, sentence embedder, scaler,
-logistic regression model, PyTorch net, and metrics/threshold) exactly once
-per process and exposes a single predict() function the views call.
+Loads the trained artifacts (TF-IDF vectorizer, scaler, logistic regression
+model, PyTorch net, and metrics/threshold) exactly once per process and
+exposes a single predict() function the views call.
 
-Loading a SentenceTransformer and a PyTorch model is relatively slow (a
-second or two), so doing it once as module-level singletons instead of per
-request matters for response time.
+Note: this pipeline deliberately does NOT use sentence-transformers for
+semantic embeddings, even though that's a natural fit for a resume/JD
+similarity feature. It was tried and removed — see the "About the ML stack"
+note in the README — because sentence-transformers pulls in torch,
+transformers, tokenizers, and huggingface-hub, which together exceeded
+Render's free-tier 512MB RAM limit and crashed the whole app, both at
+startup and mid-request. TF-IDF similarity plus the skill/experience
+features carry the matching signal instead.
 """
 
 import json
 
 import joblib
 import torch
-from sentence_transformers import SentenceTransformer
 
 from django.conf import settings
 
@@ -21,7 +25,6 @@ from .nn_model import FitNet
 
 _vectorizer = None
 _scaler = None
-_embedder = None
 _logistic_model = None
 _nn_model = None
 _metrics = None
@@ -33,7 +36,7 @@ def _artifacts_dir():
 
 def _load_artifacts():
     """Loads every saved artifact into module-level globals, once."""
-    global _vectorizer, _scaler, _embedder, _logistic_model, _nn_model, _metrics
+    global _vectorizer, _scaler, _logistic_model, _nn_model, _metrics
 
     if _metrics is not None:
         return  # already loaded
@@ -52,21 +55,14 @@ def _load_artifacts():
     _nn_model.load_state_dict(torch.load(artifacts_dir / "pytorch_nn.pt", map_location="cpu"))
     _nn_model.eval()
 
-    # The embedding model is downloaded from Hugging Face on first use and
-    # cached locally afterwards — no API key involved, it's a free public
-    # model file, not a paid API call.
-    _embedder = SentenceTransformer("all-MiniLM-L6-v2")
-
 
 def warm():
     """
-    Forces the artifacts (including the sentence-transformer download/load)
-    to happen right now instead of lazily on the first predict() call. Called
-    once at process startup (see matcher/apps.py) so that the one-time cost
-    of loading torch + sentence-transformers happens during boot — a quiet
-    moment with no concurrent request handling — rather than mid-request,
-    where it competes with request handling for memory and can blow past a
-    request timeout on a memory-constrained host.
+    Forces the artifacts to load right now instead of lazily on the first
+    predict() call. Called once at process startup (see matcher/apps.py).
+    Now that sentence-transformers is gone, this is cheap (small joblib
+    files + a tiny PyTorch state dict) — kept mainly so the first real
+    request isn't the one paying even that small cost.
     """
     _load_artifacts()
 
@@ -79,7 +75,7 @@ def predict(resume_text, jd_text):
     """
     _load_artifacts()
 
-    features = build_feature_dict(resume_text, jd_text, _vectorizer, _embedder)
+    features = build_feature_dict(resume_text, jd_text, _vectorizer)
     vector = feature_dict_to_vector(features).reshape(1, -1)
     scaled_vector = _scaler.transform(vector)
 

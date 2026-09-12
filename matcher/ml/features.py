@@ -20,7 +20,6 @@ from .skills import ALL_SKILLS
 # train_models.py and predict.py must build vectors in this exact order.
 FEATURE_NAMES = [
     "tfidf_similarity",
-    "semantic_similarity",
     "skill_overlap_ratio",
     "missing_skill_count",
     "resume_years",
@@ -62,13 +61,7 @@ def tfidf_similarity(resume_text, jd_text, vectorizer):
     return float(cosine_similarity(vectors[0], vectors[1])[0][0])
 
 
-def semantic_similarity(resume_text, jd_text, embedder):
-    """Cosine similarity between sentence-embedding vectors of the two texts."""
-    embeddings = embedder.encode([resume_text, jd_text])
-    return float(cosine_similarity([embeddings[0]], [embeddings[1]])[0][0])
-
-
-def build_feature_dict(resume_text, jd_text, vectorizer, embedder):
+def build_feature_dict(resume_text, jd_text, vectorizer):
     """
     Computes every feature plus the matched/missing skill lists. Returns a
     plain dict so callers can pick out `FEATURE_NAMES` for the model input
@@ -86,7 +79,6 @@ def build_feature_dict(resume_text, jd_text, vectorizer, embedder):
 
     return {
         "tfidf_similarity": tfidf_similarity(resume_text, jd_text, vectorizer),
-        "semantic_similarity": semantic_similarity(resume_text, jd_text, embedder),
         "skill_overlap_ratio": skill_overlap_ratio,
         "missing_skill_count": float(len(missing_skills)),
         "resume_years": resume_years,

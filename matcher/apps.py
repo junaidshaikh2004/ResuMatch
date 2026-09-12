@@ -27,8 +27,8 @@ class MatcherConfig(AppConfig):
 
     def _should_warm_ml_artifacts(self):
         """
-        Only worth eagerly loading torch + sentence-transformers when we're
-        actually about to serve requests: under gunicorn (production), or
+        Only worth eagerly loading the model artifacts when we're actually
+        about to serve requests: under gunicorn (production), or
         `manage.py runserver` (local dev). Skip it for every other manage.py
         command (migrate, test, generate_dataset, train_models, shell, ...)
         so those stay fast and don't require artifacts to already exist.

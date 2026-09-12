@@ -1,0 +1,46 @@
+{% extends "matcher/base.html" %}
+
+{% block title %}My Resume — ResuMatch{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900">My Resume</h1>
+<p class="mt-1 text-slate-500">Your resume is stored server-side, tied to this browser session — no account needed.</p>
+
+<div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <h2 class="font-semibold text-slate-900">{% if resume %}Replace resume{% else %}Upload resume{% endif %}</h2>
+    <form method="post" enctype="multipart/form-data" class="mt-4 space-y-4">
+      {% csrf_token %}
+      <div>
+        <input type="file" name="resume_file" accept=".pdf,.docx,.txt"
+               class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-indigo-700 file:font-medium hover:file:bg-indigo-100">
+        {% if form.resume_file.errors %}
+          <p class="mt-1 text-sm text-red-600">{{ form.resume_file.errors|join:", " }}</p>
+        {% endif %}
+        {% if form.non_field_errors %}
+          <p class="mt-1 text-sm text-red-600">{{ form.non_field_errors|join:", " }}</p>
+        {% endif %}
+      </div>
+      <p class="text-xs text-slate-400">PDF, DOCX, or TXT — up to 5MB.</p>
+      <button type="submit" class="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-white font-semibold shadow hover:bg-indigo-700 transition">
+        {% if resume %}Replace{% else %}Save{% endif %} Resume
+      </button>
+    </form>
+  </div>
+
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <h2 class="font-semibold text-slate-900">Currently stored</h2>
+    {% if resume %}
+      <dl class="mt-4 text-sm space-y-1">
+        <div class="flex justify-between"><dt class="text-slate-500">File</dt><dd class="font-medium">{{ resume.original_filename }}</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">Type</dt><dd class="font-medium uppercase">{{ resume.file_type }}</dd></div>
+        <div class="flex justify-between"><dt class="text-slate-500">Last updated</dt><dd class="font-medium">{{ resume.uploaded_at }}</dd></div>
+      </dl>
+      <h3 class="mt-4 text-sm font-medium text-slate-700">Extracted text preview</h3>
+      <div class="mt-2 h-48 overflow-y-auto rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs text-slate-600 whitespace-pre-wrap">{{ resume.raw_text }}</div>
+    {% else %}
+      <p class="mt-4 text-sm text-slate-500">No resume stored yet. Upload one to get started.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

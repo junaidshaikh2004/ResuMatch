@@ -1,0 +1,67 @@
+{% extends "matcher/base.html" %}
+
+{% block title %}Result — ResuMatch{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900">Fit Result</h1>
+
+<div class="mt-6 rounded-2xl bg-white p-8 shadow-sm border border-slate-100 text-center">
+  <div class="text-5xl font-extrabold {% if result.verdict == 'Good Fit' %}text-green-600{% else %}text-red-500{% endif %}">
+    {{ score_percent }}%
+  </div>
+  <div class="mt-2 inline-block rounded-full px-4 py-1 text-sm font-semibold
+              {% if result.verdict == 'Good Fit' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-600{% endif %}">
+    {{ result.verdict }}
+  </div>
+  <p class="mt-3 text-sm text-slate-500">
+    Primary model:
+    {% if result.primary_model == 'pytorch_nn' %}PyTorch Neural Network{% else %}Logistic Regression{% endif %}
+  </p>
+  <p class="mt-1 text-xs text-slate-400">
+    Baseline comparison —
+    {% if result.other_model_name == 'pytorch_nn' %}PyTorch Neural Network{% else %}Logistic Regression{% endif %}
+    predicted <span class="font-medium">{{ result.other_model_verdict }}</span>
+    ({{ other_score_percent }}%)
+  </p>
+</div>
+
+<div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <h2 class="font-semibold text-slate-900">Matched Skills</h2>
+    <div class="mt-3 flex flex-wrap gap-2">
+      {% for skill in result.matched_skills %}
+        <span class="rounded-full bg-green-50 text-green-700 border border-green-200 px-3 py-1 text-xs font-medium">{{ skill }}</span>
+      {% empty %}
+        <p class="text-sm text-slate-400">No overlapping skills detected.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <h2 class="font-semibold text-slate-900">Missing Skills</h2>
+    <div class="mt-3 flex flex-wrap gap-2">
+      {% for skill in result.missing_skills %}
+        <span class="rounded-full bg-red-50 text-red-600 border border-red-200 px-3 py-1 text-xs font-medium">{{ skill }}</span>
+      {% empty %}
+        <p class="text-sm text-slate-400">No missing skills detected. 🎉</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="mt-6 rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+  <h2 class="font-semibold text-slate-900">Experience</h2>
+  <div class="mt-3 flex justify-between text-sm">
+    <span class="text-slate-500">Your experience</span>
+    <span class="font-medium">{{ result.resume_years_experience|floatformat:0 }} years</span>
+  </div>
+  <div class="mt-1 flex justify-between text-sm">
+    <span class="text-slate-500">Required by JD</span>
+    <span class="font-medium">{{ result.jd_years_experience_required|floatformat:0 }} years</span>
+  </div>
+</div>
+
+<div class="mt-6">
+  <a href="{% url 'job_check' %}" class="text-sm font-medium text-indigo-600 hover:underline">&larr; Run another check</a>
+</div>
+{% endblock %}

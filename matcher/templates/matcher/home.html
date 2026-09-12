@@ -1,0 +1,45 @@
+{% extends "matcher/base.html" %}
+
+{% block title %}ResuMatch — Resume/Job Fit Checker{% endblock %}
+
+{% block content %}
+<div class="text-center py-12 sm:py-16">
+  <h1 class="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
+    Does your resume fit the job?
+  </h1>
+  <p class="mt-4 text-lg text-slate-500 max-w-2xl mx-auto">
+    ResuMatch compares your resume against any job description using TF-IDF, sentence
+    embeddings, and skill/experience extraction — then scores the fit with two models
+    trained from scratch: Logistic Regression and a hand-built PyTorch network.
+  </p>
+
+  <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+    <a href="{% url 'job_check' %}"
+       class="w-full sm:w-auto rounded-xl bg-indigo-600 px-6 py-3 text-white font-semibold shadow hover:bg-indigo-700 transition">
+      Check Job Fit
+    </a>
+    <a href="{% url 'my_resume' %}"
+       class="w-full sm:w-auto rounded-xl bg-white px-6 py-3 text-indigo-600 font-semibold border border-indigo-200 shadow-sm hover:bg-indigo-50 transition">
+      {% if has_resume %}View / Replace My Resume{% else %}Upload My Resume{% endif %}
+    </a>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8">
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <div class="text-indigo-600 font-bold text-2xl mb-2">1</div>
+    <h3 class="font-semibold text-slate-900">Store your resume once</h3>
+    <p class="mt-1 text-sm text-slate-500">Upload a PDF, DOCX, or text file. It's parsed and saved so you don't have to re-upload it every time.</p>
+  </div>
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <div class="text-indigo-600 font-bold text-2xl mb-2">2</div>
+    <h3 class="font-semibold text-slate-900">Paste a job description</h3>
+    <p class="mt-1 text-sm text-slate-500">Or upload a different resume just for that one check — your stored resume stays untouched.</p>
+  </div>
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <div class="text-indigo-600 font-bold text-2xl mb-2">3</div>
+    <h3 class="font-semibold text-slate-900">Get a fit score</h3>
+    <p class="mt-1 text-sm text-slate-500">See your score, matched and missing skills, and how two different models compare on the same result.</p>
+  </div>
+</div>
+{% endblock %}

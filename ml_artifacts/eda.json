@@ -1,0 +1,92 @@
+{
+  "class_balance": {
+    "good_fit": 266,
+    "not_a_fit": 834
+  },
+  "role_counts": {
+    "QA Engineer": 103,
+    "Backend Developer": 100,
+    "Cloud Engineer": 100,
+    "UI/UX Designer": 98,
+    "Data Scientist": 98,
+    "Mobile Developer": 97,
+    "DevOps Engineer": 87,
+    "Data Analyst": 87,
+    "Cybersecurity Analyst": 87,
+    "Frontend Developer": 83,
+    "Product Manager": 82,
+    "Machine Learning Engineer": 78
+  },
+  "feature_distributions": {
+    "tfidf_similarity": {
+      "good_fit": {
+        "mean": 0.35835003666963133,
+        "std": 0.20034358608711864
+      },
+      "not_a_fit": {
+        "mean": 0.13117166286588997,
+        "std": 0.15350740750461153
+      }
+    },
+    "semantic_similarity": {
+      "good_fit": {
+        "mean": 0.7068806642428377,
+        "std": 0.15904163244418218
+      },
+      "not_a_fit": {
+        "mean": 0.5367677056675049,
+        "std": 0.15135496037741314
+      }
+    },
+    "skill_overlap_ratio": {
+      "good_fit": {
+        "mean": 0.5629765702134123,
+        "std": 0.3192006537053173
+      },
+      "not_a_fit": {
+        "mean": 0.18247458310407952,
+        "std": 0.23968549810825265
+      }
+    },
+    "missing_skill_count": {
+      "good_fit": {
+        "mean": 3.191729323308271,
+        "std": 2.403961176946908
+      },
+      "not_a_fit": {
+        "mean": 6.017985611510792,
+        "std": 2.0581271945517954
+      }
+    },
+    "resume_years": {
+      "good_fit": {
+        "mean": 5.913533834586466,
+        "std": 2.8344094597812304
+      },
+      "not_a_fit": {
+        "mean": 4.81294964028777,
+        "std": 3.195999474741482
+      }
+    },
+    "jd_years_required": {
+      "good_fit": {
+        "mean": 3.7293233082706765,
+        "std": 1.9022259203004095
+      },
+      "not_a_fit": {
+        "mean": 4.063549160671463,
+        "std": 1.9914782160478934
+      }
+    },
+    "experience_gap": {
+      "good_fit": {
+        "mean": 2.1842105263157894,
+        "std": 3.0137365238815947
+      },
+      "not_a_fit": {
+        "mean": 0.749400479616307,
+        "std": 3.8457402234153797
+      }
+    }
+  }
+}

@@ -1,0 +1,163 @@
+{% extends "matcher/base.html" %}
+
+{% block title %}Dashboard — ResuMatch{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900">Dataset &amp; Model Dashboard</h1>
+<p class="mt-1 text-slate-500">
+  Trained on {{ metrics.dataset_size.train }} training / {{ metrics.dataset_size.val }} validation /
+  {{ metrics.dataset_size.test }} test examples from a synthetically generated resume/JD dataset
+  (see the "About the dataset" note at the bottom of this page).
+</p>
+
+<div class="mt-6 rounded-2xl bg-indigo-50 border border-indigo-100 p-6">
+  <h2 class="font-semibold text-indigo-900">Which model wins, and why</h2>
+  <p class="mt-2 text-sm text-indigo-800">
+    The primary model shown on every result is
+    <strong>{% if metrics.primary_model == 'pytorch_nn' %}the PyTorch Neural Network{% else %}Logistic Regression{% endif %}</strong>,
+    picked by comparing recall on the "Good Fit" class first and F1 as a tie-breaker
+    (recall: {{ metrics.metrics.pytorch_nn.recall|floatformat:2 }} neural network vs.
+    {{ metrics.metrics.logistic_regression.recall|floatformat:2 }} logistic regression;
+    F1: {{ metrics.metrics.pytorch_nn.f1|floatformat:2 }} vs. {{ metrics.metrics.logistic_regression.f1|floatformat:2 }}).
+    Recall matters more than raw accuracy here: missing a genuine good fit (a false negative) is a worse
+    outcome for a candidate than being shown one extra borderline match. Each model's decision threshold
+    (Logistic Regression: {{ metrics.metrics.logistic_regression.threshold|floatformat:2 }}, Neural Network:
+    {{ metrics.metrics.pytorch_nn.threshold|floatformat:2 }}) was tuned on a held-out validation set to
+    maximize recall without precision falling too low, then each model was evaluated once on a separate,
+    untouched test set — the numbers below.
+  </p>
+</div>
+
+<div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <h2 class="font-semibold text-slate-900">Class balance</h2>
+    <canvas id="classBalanceChart" class="mt-4"></canvas>
+  </div>
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <h2 class="font-semibold text-slate-900">Job description role distribution</h2>
+    <canvas id="roleChart" class="mt-4"></canvas>
+  </div>
+</div>
+
+<div class="mt-6 rounded-2xl bg-white p-6 shadow-sm border border-slate-100 overflow-x-auto">
+  <h2 class="font-semibold text-slate-900">Model comparison (held-out test set)</h2>
+  <table class="mt-4 w-full text-sm">
+    <thead>
+      <tr class="text-left text-slate-500 border-b border-slate-200">
+        <th class="py-2 pr-4">Model</th>
+        <th class="py-2 pr-4">Threshold</th>
+        <th class="py-2 pr-4">Accuracy</th>
+        <th class="py-2 pr-4">Precision</th>
+        <th class="py-2 pr-4">Recall (Good Fit)</th>
+        <th class="py-2 pr-4">F1</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="border-b border-slate-100 {% if metrics.primary_model == 'logistic_regression' %}bg-indigo-50{% endif %}">
+        <td class="py-2 pr-4 font-medium">Logistic Regression</td>
+        <td class="py-2 pr-4">{{ metrics.metrics.logistic_regression.threshold|floatformat:2 }}</td>
+        <td class="py-2 pr-4">{{ metrics.metrics.logistic_regression.accuracy|floatformat:2 }}</td>
+        <td class="py-2 pr-4">{{ metrics.metrics.logistic_regression.precision|floatformat:2 }}</td>
+        <td class="py-2 pr-4 font-semibold">{{ metrics.metrics.logistic_regression.recall|floatformat:2 }}</td>
+        <td class="py-2 pr-4">{{ metrics.metrics.logistic_regression.f1|floatformat:2 }}</td>
+      </tr>
+      <tr class="{% if metrics.primary_model == 'pytorch_nn' %}bg-indigo-50{% endif %}">
+        <td class="py-2 pr-4 font-medium">PyTorch Neural Network</td>
+        <td class="py-2 pr-4">{{ metrics.metrics.pytorch_nn.threshold|floatformat:2 }}</td>
+        <td class="py-2 pr-4">{{ metrics.metrics.pytorch_nn.accuracy|floatformat:2 }}</td>
+        <td class="py-2 pr-4">{{ metrics.metrics.pytorch_nn.precision|floatformat:2 }}</td>
+        <td class="py-2 pr-4 font-semibold">{{ metrics.metrics.pytorch_nn.recall|floatformat:2 }}</td>
+        <td class="py-2 pr-4">{{ metrics.metrics.pytorch_nn.f1|floatformat:2 }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <h2 class="font-semibold text-slate-900">Confusion matrix — Logistic Regression</h2>
+    {% with cm=metrics.metrics.logistic_regression.confusion_matrix %}
+    <div class="mt-4 grid grid-cols-2 gap-1 text-center text-sm max-w-xs">
+      <div class="bg-slate-100 rounded p-3"><div class="text-xs text-slate-400">True Negative</div>{{ cm.0.0 }}</div>
+      <div class="bg-red-50 rounded p-3"><div class="text-xs text-slate-400">False Positive</div>{{ cm.0.1 }}</div>
+      <div class="bg-red-50 rounded p-3"><div class="text-xs text-slate-400">False Negative</div>{{ cm.1.0 }}</div>
+      <div class="bg-green-50 rounded p-3"><div class="text-xs text-slate-400">True Positive</div>{{ cm.1.1 }}</div>
+    </div>
+    {% endwith %}
+  </div>
+  <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
+    <h2 class="font-semibold text-slate-900">Confusion matrix — PyTorch Neural Network</h2>
+    {% with cm=metrics.metrics.pytorch_nn.confusion_matrix %}
+    <div class="mt-4 grid grid-cols-2 gap-1 text-center text-sm max-w-xs">
+      <div class="bg-slate-100 rounded p-3"><div class="text-xs text-slate-400">True Negative</div>{{ cm.0.0 }}</div>
+      <div class="bg-red-50 rounded p-3"><div class="text-xs text-slate-400">False Positive</div>{{ cm.0.1 }}</div>
+      <div class="bg-red-50 rounded p-3"><div class="text-xs text-slate-400">False Negative</div>{{ cm.1.0 }}</div>
+      <div class="bg-green-50 rounded p-3"><div class="text-xs text-slate-400">True Positive</div>{{ cm.1.1 }}</div>
+    </div>
+    {% endwith %}
+  </div>
+</div>
+
+<div class="mt-6 rounded-2xl bg-white p-6 shadow-sm border border-slate-100 overflow-x-auto">
+  <h2 class="font-semibold text-slate-900">Feature distributions by class</h2>
+  <p class="mt-1 text-xs text-slate-400">Mean value of each engineered feature, split by the true label — a sanity check that the features actually separate the two classes.</p>
+  <table class="mt-4 w-full text-sm">
+    <thead>
+      <tr class="text-left text-slate-500 border-b border-slate-200">
+        <th class="py-2 pr-4">Feature</th>
+        <th class="py-2 pr-4">Good Fit (mean)</th>
+        <th class="py-2 pr-4">Not a Fit (mean)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for feature, dist in eda.feature_distributions.items %}
+        <tr class="border-b border-slate-100">
+          <td class="py-2 pr-4 font-medium">{{ feature }}</td>
+          <td class="py-2 pr-4">{{ dist.good_fit.mean|floatformat:2 }}</td>
+          <td class="py-2 pr-4">{{ dist.not_a_fit.mean|floatformat:2 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="mt-6 rounded-lg bg-slate-100 border border-slate-200 px-4 py-3 text-xs text-slate-500">
+  <strong>About the dataset:</strong> no suitable public dataset of labeled resume/job-description
+  fit pairs was reliably available, so this project uses an AI-generated synthetic dataset
+  (template-based resumes/JDs across 12 job roles with a skill-overlap + experience labeling rule
+  and injected label noise) built by <code>generate_dataset.py</code> — it is not real user data.
+</div>
+
+{{ eda|json_script:"eda-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  const eda = JSON.parse(document.getElementById('eda-data').textContent);
+
+  new Chart(document.getElementById('classBalanceChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Good Fit', 'Not a Fit'],
+      datasets: [{
+        data: [eda.class_balance.good_fit, eda.class_balance.not_a_fit],
+        backgroundColor: ['#16a34a', '#ef4444'],
+      }],
+    },
+    options: { plugins: { legend: { position: 'bottom' } } },
+  });
+
+  const roleLabels = Object.keys(eda.role_counts);
+  const roleValues = Object.values(eda.role_counts);
+  new Chart(document.getElementById('roleChart'), {
+    type: 'bar',
+    data: {
+      labels: roleLabels,
+      datasets: [{ label: 'JDs generated', data: roleValues, backgroundColor: '#6366f1' }],
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } },
+    },
+  });
+</script>
+{% endblock %}

@@ -58,6 +58,19 @@ def _load_artifacts():
     _embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
 
+def warm():
+    """
+    Forces the artifacts (including the sentence-transformer download/load)
+    to happen right now instead of lazily on the first predict() call. Called
+    once at process startup (see matcher/apps.py) so that the one-time cost
+    of loading torch + sentence-transformers happens during boot — a quiet
+    moment with no concurrent request handling — rather than mid-request,
+    where it competes with request handling for memory and can blow past a
+    request timeout on a memory-constrained host.
+    """
+    _load_artifacts()
+
+
 def predict(resume_text, jd_text):
     """
     Runs the full pipeline on one resume/JD pair and returns a dict with

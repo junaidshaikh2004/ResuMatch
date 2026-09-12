@@ -100,8 +100,23 @@ this project mitigates that by using a small embedding model
 (`all-MiniLM-L6-v2`, ~80MB), loading it once per process as a singleton
 (`matcher/ml/predict.py`) instead of per-request, running a single gunicorn
 worker, and committing the already-trained model files so the deployed app
-never trains on boot. If you see out-of-memory errors, the single-worker
-setting above is the first thing to check (don't scale up gunicorn workers
+never trains on boot.
+
+That singleton is loaded **eagerly at process startup** (`matcher/apps.py`,
+`MatcherConfig.ready()`) rather than lazily on the first job-fit check. This
+was a deliberate fix after the first live deploy: loading torch +
+sentence-transformers for the first time inside a live request competed with
+request handling for memory and crashed the whole worker (not just that
+request — every page 502'd until Render auto-restarted it). Loading it once
+at boot, before any traffic is accepted, means that cost is paid at a quiet
+moment instead. The trade-off is a slower cold start/boot (and a slower
+wake-up after Render's free tier spins the service down from inactivity,
+since the model has to reload then too) — if a deploy's health check ever
+times out because of this, increase Render's health check grace period
+rather than reverting to lazy loading.
+
+If you still see out-of-memory errors after this, the single-worker setting
+above is the next thing to check (don't scale up gunicorn workers
 without also scaling up the plan's RAM).
 
 ## Tests
